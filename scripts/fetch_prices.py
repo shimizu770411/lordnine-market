@@ -117,6 +117,8 @@ def main():
                 "min_price_usd": min_usd,
                 "top5_avg_price_usd": top5_avg_usd,
                 "usd_jpy_rate": usd_jpy_rate,
+                "min_price_rare_equiv": round(min_jpy / 5, 1) if target["rarity"] == "エピック" else None,
+                "top5_avg_rare_equiv": round(top5_avg_jpy / 5, 1) if target["rarity"] == "エピック" else None,
             }
 
             print(f"  件数: {total_count}, 最安値: ¥{min_jpy}(${min_usd}), 上位5平均: ¥{top5_avg_jpy}(${top5_avg_usd})")
