@@ -40,6 +40,7 @@ def fetch_all_pages(preset_id_list, realm_code, sort):
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "ja-JP,ja;q=0.9",
         }
         resp = requests.post(
             f"{API_URL}?page={page}",
