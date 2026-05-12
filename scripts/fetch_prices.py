@@ -12,13 +12,13 @@ API_URL = "https://api.nextmarket.games/l9asia/v1/sale/c2c"
 TARGETS = [
     {
         "rarity": "レア",
-        "presetIdList": ["49"],
+        "presetIdList": ["36", "49"],
         "realmCode": "OLD_REALM",
         "sort": "PRICE_ASC",
     },
     {
         "rarity": "エピック",
-        "presetIdList": ["50"],
+        "presetIdList": ["36", "50"],
         "realmCode": "OLD_REALM",
         "sort": "PRICE_ASC",
     },
