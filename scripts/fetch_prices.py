@@ -64,7 +64,7 @@ def analyze(items):
     prices = [
         item["fiatPriceInfo"]["price"]
         for item in items
-        if item.get("fiatPriceInfo")
+        if item.get("fiatPriceInfo") and item["fiatPriceInfo"]["currencyType"] == "JPY"
     ]
     if not prices:
         return None, None
