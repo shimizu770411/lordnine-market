@@ -1,0 +1,25 @@
+name: Fetch Lordnine Market Prices
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # 5分ごと
+  workflow_dispatch:        # 手動実行も可能
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests supabase
+
+      - name: Fetch prices
+        run: python scripts/fetch_prices.py
