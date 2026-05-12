@@ -63,11 +63,18 @@ def fetch_all_pages(preset_id_list, realm_code, sort):
 
 def analyze(items):
     """最安値・上位5件平均を計算"""
+    print(f"  analyze: items数={len(items)}")
+    if items:
+        sample = items[0].get("fiatPriceInfo")
+        print(f"  サンプルfiatPriceInfo: {sample}")
+    
     prices = sorted([
         item["fiatPriceInfo"]["price"]
         for item in items
         if item.get("fiatPriceInfo") and item["fiatPriceInfo"].get("currencyType") == "JPY"
     ])
+    print(f"  prices件数: {len(prices)}")
+    
     if not prices:
         return None, None
 
