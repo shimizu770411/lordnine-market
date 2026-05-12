@@ -220,6 +220,8 @@
 </header>
 
 <div class="scale-bar">
+  <button class="scale-btn" data-hours="0.0833">5M</button>
+  <button class="scale-btn" data-hours="0.5">30M</button>
   <button class="scale-btn" data-hours="1">1H</button>
   <button class="scale-btn" data-hours="4">4H</button>
   <button class="scale-btn" data-hours="8">8H</button>
@@ -353,7 +355,7 @@ function buildCharts(data) {
           <div class="legend-item"><div class="legend-line" style="background:var(--rare)"></div>最安値</div>
           <div class="legend-item"><div class="legend-line" style="background:var(--avg)"></div>上位5平均</div>
           <div class="legend-item"><div class="legend-line" style="background:var(--equiv)"></div>エピック換算</div>
-          <div class="legend-item"><div class="legend-line" style="background:rgba(0,229,160,0.4); border-top: 2px dashed var(--equiv)"></div>換算上位5平均</div>
+          <div class="legend-item"><div class="legend-line" style="background: repeating-linear-gradient(to right, var(--equiv) 0, var(--equiv) 4px, transparent 4px, transparent 8px);"></div>換算上位5平均</div>
         </div>
         <canvas id="rareCanvas"></canvas>
       </div>
@@ -474,7 +476,7 @@ document.querySelectorAll('.scale-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    currentHours = parseInt(btn.dataset.hours);
+    currentHours = parseFloat(btn.dataset.hours);
     load(currentHours);
   });
 });
