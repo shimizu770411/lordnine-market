@@ -29,6 +29,7 @@ def fetch_all_pages(preset_id_list, realm_code, sort):
     """全ページのデータを取得して返す"""
     all_items = []
     page = 0
+    total_elements = 0
 
     while True:
         payload = {
@@ -51,12 +52,13 @@ def fetch_all_pages(preset_id_list, realm_code, sort):
 
         content = data.get("content", [])
         all_items.extend(content)
+        total_elements = data.get("totalElements", 0)
 
         if data.get("last", True):
             break
         page += 1
 
-    return all_items, data.get("totalElements", 0)
+    return all_items, total_elements
 
 
 def analyze(items):
