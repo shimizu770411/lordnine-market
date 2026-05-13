@@ -313,7 +313,9 @@ function formatTime(iso) {
 }
 
 async function fetchData(hours) {
-  const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+  // 5M窓はcronゆらぎで空になりがちなので最低6分に広げる
+  const queryHours = Math.max(hours, 0.1);
+  const since = new Date(Date.now() - queryHours * 3600 * 1000).toISOString();
   const url = `${SUPABASE_URL}/rest/v1/price_snapshots?fetched_at=gte.${since}&order=fetched_at.asc&select=fetched_at,rarity,min_price,top5_avg_price,min_price_rare_equiv,top5_avg_rare_equiv,total_count`;
   const res = await fetch(url, {
     headers: {
