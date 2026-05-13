@@ -302,6 +302,17 @@ const chartDefaults = {
   }
 };
 
+function sma(values, window) {
+  const out = new Array(values.length).fill(null);
+  if (values.length < window) return out;
+  for (let i = window - 1; i < values.length; i++) {
+    let sum = 0;
+    for (let j = i - window + 1; j <= i; j++) sum += values[j];
+    out[i] = sum / window;
+  }
+  return out;
+}
+
 function formatTime(iso) {
   const d = new Date(iso);
   const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
@@ -356,6 +367,7 @@ function buildCharts(data) {
           <div class="legend-item"><div class="legend-line" style="background:var(--avg)"></div>上位5平均</div>
           <div class="legend-item"><div class="legend-line" style="background:var(--equiv)"></div>エピック換算</div>
           <div class="legend-item"><div class="legend-line" style="background: repeating-linear-gradient(to right, var(--equiv) 0, var(--equiv) 4px, transparent 4px, transparent 8px);"></div>換算上位5平均</div>
+          <div class="legend-item"><div class="legend-line" style="background:#ff6b9d"></div>移動平均</div>
         </div>
         <canvas id="rareCanvas"></canvas>
       </div>
@@ -364,6 +376,7 @@ function buildCharts(data) {
         <div class="legend">
           <div class="legend-item"><div class="legend-line" style="background:var(--epic)"></div>最安値</div>
           <div class="legend-item"><div class="legend-line" style="background:var(--avg)"></div>上位5平均</div>
+          <div class="legend-item"><div class="legend-line" style="background:#ff6b9d"></div>移動平均</div>
         </div>
         <canvas id="epicCanvas"></canvas>
       </div>
@@ -376,6 +389,11 @@ function buildCharts(data) {
   // データ点が少ない時は点を表示
   const maxLen = Math.max(rare.length, epic.length);
   const pointR = maxLen <= 12 ? 3 : 0;
+
+  // 移動平均の窓幅（データ点数の約10%、最小3）
+  const maWindow = Math.max(3, Math.floor(maxLen / 10));
+  const rareSma = sma(rare.map(d => d.min_price), maWindow);
+  const epicSma = sma(epic.map(d => d.min_price), maWindow);
 
   // レアチャート
   if (rareChart) rareChart.destroy();
@@ -423,6 +441,15 @@ function buildCharts(data) {
           pointRadius: pointR,
           tension: 0.3,
         },
+        {
+          label: `移動平均(${maWindow})`,
+          data: rareSma,
+          borderColor: '#ff6b9d',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3,
+        },
       ]
     },
     options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, tooltip: { ...chartDefaults.plugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ¥${ctx.parsed.y?.toLocaleString()}` } } } }
@@ -452,6 +479,15 @@ function buildCharts(data) {
           backgroundColor: 'transparent',
           borderWidth: 1.5,
           pointRadius: pointR,
+          tension: 0.3,
+        },
+        {
+          label: `移動平均(${maWindow})`,
+          data: epicSma,
+          borderColor: '#ff6b9d',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          pointRadius: 0,
           tension: 0.3,
         },
       ]
