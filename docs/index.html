@@ -373,6 +373,10 @@ function buildCharts(data) {
   const rareLabels = rare.map(d => formatTime(d.fetched_at));
   const epicLabels = epic.map(d => formatTime(d.fetched_at));
 
+  // データ点が少ない時は点を表示
+  const maxLen = Math.max(rare.length, epic.length);
+  const pointR = maxLen <= 12 ? 3 : 0;
+
   // レアチャート
   if (rareChart) rareChart.destroy();
   rareChart = new Chart(document.getElementById('rareCanvas'), {
@@ -386,7 +390,7 @@ function buildCharts(data) {
           borderColor: '#4a9eff',
           backgroundColor: 'rgba(74,158,255,0.05)',
           borderWidth: 2,
-          pointRadius: 0,
+          pointRadius: pointR,
           tension: 0.3,
           fill: true,
         },
@@ -396,7 +400,7 @@ function buildCharts(data) {
           borderColor: '#ffd166',
           backgroundColor: 'transparent',
           borderWidth: 1.5,
-          pointRadius: 0,
+          pointRadius: pointR,
           tension: 0.3,
         },
         {
@@ -405,7 +409,7 @@ function buildCharts(data) {
           borderColor: '#00e5a0',
           backgroundColor: 'rgba(0,229,160,0.05)',
           borderWidth: 2,
-          pointRadius: 0,
+          pointRadius: pointR,
           tension: 0.3,
           fill: true,
         },
@@ -416,7 +420,7 @@ function buildCharts(data) {
           backgroundColor: 'transparent',
           borderWidth: 1.5,
           borderDash: [4, 4],
-          pointRadius: 0,
+          pointRadius: pointR,
           tension: 0.3,
         },
       ]
@@ -437,7 +441,7 @@ function buildCharts(data) {
           borderColor: '#c77dff',
           backgroundColor: 'rgba(199,125,255,0.05)',
           borderWidth: 2,
-          pointRadius: 0,
+          pointRadius: pointR,
           tension: 0.3,
           fill: true,
         },
@@ -447,7 +451,7 @@ function buildCharts(data) {
           borderColor: '#ffd166',
           backgroundColor: 'transparent',
           borderWidth: 1.5,
-          pointRadius: 0,
+          pointRadius: pointR,
           tension: 0.3,
         },
       ]
