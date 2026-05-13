@@ -22,4 +22,6 @@ jobs:
         run: pip install requests supabase
 
       - name: Fetch prices
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python scripts/fetch_prices.py

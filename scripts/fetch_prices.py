@@ -1,6 +1,10 @@
+import os
 import requests
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from supabase import create_client
+
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+NOTIFY_COOLDOWN_MIN = 30
 
 # === 設定 ===
 SUPABASE_URL = "https://lvtqanjloslkwapvgdpw.supabase.co"
@@ -71,6 +75,37 @@ def fetch_all_pages(preset_id_list, realm_code, sort):
     return all_items, total_elements
 
 
+def check_and_notify(supabase, rarity, min_jpy):
+    """しきい値割れチェック → Discord通知 (30分cooldown)"""
+    if not DISCORD_WEBHOOK_URL or min_jpy is None:
+        return
+
+    res = supabase.table("alert_settings").select("*").eq("rarity", rarity).execute()
+    if not res.data:
+        return
+    row = res.data[0]
+    threshold = row.get("threshold_price")
+    if threshold is None or min_jpy >= threshold:
+        return
+
+    last_notified = row.get("last_notified_at")
+    now = datetime.now(timezone.utc)
+    if last_notified:
+        last_dt = datetime.fromisoformat(last_notified.replace("Z", "+00:00"))
+        if now - last_dt < timedelta(minutes=NOTIFY_COOLDOWN_MIN):
+            print(f"  通知スキップ({rarity}): cooldown中")
+            return
+
+    msg = f":bell: **{rarity}** 最安値が ¥{min_jpy:,.1f} に下落（しきい値 ¥{threshold:,.1f}）"
+    try:
+        r = requests.post(DISCORD_WEBHOOK_URL, json={"content": msg}, timeout=10)
+        r.raise_for_status()
+        supabase.table("alert_settings").update({"last_notified_at": now.isoformat()}).eq("rarity", rarity).execute()
+        print(f"  → Discord通知送信({rarity})")
+    except Exception as e:
+        print(f"  通知エラー({rarity}): {e}")
+
+
 def analyze(items, usd_jpy_rate):
     """最安値・上位5件平均を計算（USD・円両方）"""
     prices_usd = sorted([
@@ -125,6 +160,8 @@ def main():
 
             supabase.table("price_snapshots").insert(record).execute()
             print(f"  → Supabase保存完了")
+
+            check_and_notify(supabase, target["rarity"], min_jpy)
 
         except Exception as e:
             print(f"  エラー: {e}")

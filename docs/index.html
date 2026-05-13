@@ -210,6 +210,81 @@
     width: 20px; height: 2px;
     border-radius: 2px;
   }
+
+  /* 通知設定 */
+  .alert-bar {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+
+  .alert-bar summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    user-select: none;
+  }
+
+  .alert-bar summary:hover { color: var(--text); }
+
+  .alert-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+    align-items: flex-end;
+  }
+
+  .alert-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .alert-field label {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .alert-field input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    width: 120px;
+  }
+
+  .alert-field input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  .alert-btn {
+    background: var(--accent);
+    border: none;
+    color: #000;
+    padding: 7px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .alert-btn:hover { opacity: 0.9; }
+
+  .alert-status {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
 </style>
 </head>
 <body>
@@ -255,6 +330,22 @@
     <div class="card-sub">最安値÷5</div>
   </div>
 </div>
+
+<details class="alert-bar">
+  <summary>通知設定（しきい値を下回ったらDiscordへ通知）</summary>
+  <div class="alert-form">
+    <div class="alert-field">
+      <label>レア 最安値しきい値 (¥)</label>
+      <input type="number" id="alertRare" step="0.1" placeholder="無効">
+    </div>
+    <div class="alert-field">
+      <label>エピック 最安値しきい値 (¥)</label>
+      <input type="number" id="alertEpic" step="0.1" placeholder="無効">
+    </div>
+    <button class="alert-btn" id="alertSaveBtn">保存</button>
+  </div>
+  <div class="alert-status" id="alertStatus">空欄で通知無効。30分間は再通知されません。</div>
+</details>
 
 <div id="mainContent">
   <div class="loading">データ読込中</div>
@@ -520,6 +611,50 @@ document.querySelectorAll('.scale-btn').forEach(btn => {
     load(currentHours);
   });
 });
+
+// 通知設定 (alert_settings テーブル)
+async function loadAlertSettings() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/alert_settings?select=rarity,threshold_price`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    });
+    const rows = await res.json();
+    rows.forEach(r => {
+      if (r.rarity === 'レア') document.getElementById('alertRare').value = r.threshold_price ?? '';
+      if (r.rarity === 'エピック') document.getElementById('alertEpic').value = r.threshold_price ?? '';
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function saveAlertSettings() {
+  const rareVal = document.getElementById('alertRare').value.trim();
+  const epicVal = document.getElementById('alertEpic').value.trim();
+  const status = document.getElementById('alertStatus');
+  status.textContent = '保存中...';
+  try {
+    for (const [rarity, val] of [['レア', rareVal], ['エピック', epicVal]]) {
+      const body = { threshold_price: val === '' ? null : parseFloat(val), last_notified_at: null };
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/alert_settings?rarity=eq.${encodeURIComponent(rarity)}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`${rarity}: ${res.status}`);
+    }
+    status.textContent = '保存しました';
+    setTimeout(() => { status.textContent = '空欄で通知無効。30分間は再通知されません。'; }, 3000);
+  } catch (e) {
+    status.textContent = '保存エラー: ' + e.message;
+  }
+}
+
+document.getElementById('alertSaveBtn').addEventListener('click', saveAlertSettings);
+loadAlertSettings();
 
 // 初回ロード & 5分ごと自動更新
 load(currentHours);
