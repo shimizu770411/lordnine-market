@@ -416,9 +416,9 @@ function formatTime(iso) {
 
 async function fetchData(hours) {
   const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
-  // 5分間隔サンプリング(1時間あたり約12件)を基準に、期間分の行数+バッファを明示的にlimit指定。
+  // 5分間隔サンプリング(1時間あたり約12回)×レア/エピック2種を基準に、期間分の行数+バッファを明示的にlimit指定。
   // limit未指定だとPostgRESTのデフォルト上限(1000件)にかかり、asc順のため直近側が切り捨てられ最新値が古くなる。
-  const limit = Math.ceil(hours * 12) + 50;
+  const limit = Math.ceil(hours * 12 * 2) + 100;
   const url = `${SUPABASE_URL}/rest/v1/price_snapshots?fetched_at=gte.${since}&order=fetched_at.desc&limit=${limit}&select=fetched_at,rarity,min_price,top5_avg_price,min_price_rare_equiv,top5_avg_rare_equiv,total_count`;
   const res = await fetch(url, {
     headers: {
