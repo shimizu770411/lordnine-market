@@ -404,8 +404,40 @@ function sma(values, window) {
   return out;
 }
 
+// Largest-Triangle-Three-Buckets: 各バケットにつき1点だけを残すため、単純な最小/最大間引きのような
+// ジグザグを生まず、隣接点との三角形面積が最大になる(=視覚的に目立つ)点が優先的に残る。
+function lttbIndices(points, threshold) {
+  const n = points.length;
+  if (threshold >= n || threshold <= 2) return points.map((_, i) => i);
+
+  const sampled = [0];
+  const bucketSize = (n - 2) / (threshold - 2);
+  let a = 0;
+  for (let i = 0; i < threshold - 2; i++) {
+    const rangeStart = Math.floor(i * bucketSize) + 1;
+    const rangeEnd = Math.floor((i + 1) * bucketSize) + 1;
+    const avgRangeStart = rangeEnd;
+    const avgRangeEnd = Math.min(Math.floor((i + 2) * bucketSize) + 1, n);
+    let avgX = 0, avgY = 0;
+    const avgRangeLen = avgRangeEnd - avgRangeStart;
+    for (let j = avgRangeStart; j < avgRangeEnd; j++) { avgX += j; avgY += points[j]; }
+    avgX /= avgRangeLen; avgY /= avgRangeLen;
+
+    const pointAX = a, pointAY = points[a];
+    let maxArea = -1, maxAreaIdx = rangeStart;
+    for (let j = rangeStart; j < rangeEnd; j++) {
+      const area = Math.abs((pointAX - avgX) * (points[j] - pointAY) - (pointAX - j) * (avgY - pointAY));
+      if (area > maxArea) { maxArea = area; maxAreaIdx = j; }
+    }
+    sampled.push(maxAreaIdx);
+    a = maxAreaIdx;
+  }
+  sampled.push(n - 1);
+  return sampled;
+}
+
 // 表示点数が多すぎる場合に、時刻(fetched_at)単位でレア/エピックのペアを保ったまま間引く。
-// 各バケット内の最小値・最大値のペアは必ず残すため、瞬間的な急騰・急落が線から消えない。
+// レア・エピックそれぞれの最安値の推移でLTTBを行い、選ばれた時刻の和集合を残す。
 function downsample(data, targetSnapshots = 300) {
   const order = [];
   const byTime = new Map();
@@ -418,21 +450,12 @@ function downsample(data, targetSnapshots = 300) {
   }
   if (order.length <= targetSnapshots) return data;
 
-  const bucketSize = Math.ceil(order.length / targetSnapshots);
   const keep = new Set();
-  for (let i = 0; i < order.length; i += bucketSize) {
-    const slice = order.slice(i, i + bucketSize);
-    let minRare = null, maxRare = null, minEpic = null, maxEpic = null;
-    for (const t of slice) {
-      const snap = byTime.get(t);
-      const r = snap['レア']?.min_price;
-      const e = snap['エピック']?.min_price;
-      if (r != null && (minRare === null || r < byTime.get(minRare)['レア'].min_price)) minRare = t;
-      if (r != null && (maxRare === null || r > byTime.get(maxRare)['レア'].min_price)) maxRare = t;
-      if (e != null && (minEpic === null || e < byTime.get(minEpic)['エピック'].min_price)) minEpic = t;
-      if (e != null && (maxEpic === null || e > byTime.get(maxEpic)['エピック'].min_price)) maxEpic = t;
-    }
-    [minRare, maxRare, minEpic, maxEpic].forEach(t => t && keep.add(t));
+  for (const rarity of ['レア', 'エピック']) {
+    const timeline = order.filter(t => byTime.get(t)[rarity]);
+    const values = timeline.map(t => byTime.get(t)[rarity].min_price);
+    const indices = lttbIndices(values, targetSnapshots);
+    indices.forEach(i => keep.add(timeline[i]));
   }
   keep.add(order[order.length - 1]); // 「最新の価格」表示のため直近の時点は必ず残す
 
