@@ -404,6 +404,48 @@ function sma(values, window) {
   return out;
 }
 
+// 表示点数が多すぎる場合に、時刻(fetched_at)単位でレア/エピックのペアを保ったまま間引く。
+// 各バケット内の最小値・最大値のペアは必ず残すため、瞬間的な急騰・急落が線から消えない。
+function downsample(data, targetSnapshots = 300) {
+  const order = [];
+  const byTime = new Map();
+  for (const row of data) {
+    if (!byTime.has(row.fetched_at)) {
+      byTime.set(row.fetched_at, {});
+      order.push(row.fetched_at);
+    }
+    byTime.get(row.fetched_at)[row.rarity] = row;
+  }
+  if (order.length <= targetSnapshots) return data;
+
+  const bucketSize = Math.ceil(order.length / targetSnapshots);
+  const keep = new Set();
+  for (let i = 0; i < order.length; i += bucketSize) {
+    const slice = order.slice(i, i + bucketSize);
+    let minRare = null, maxRare = null, minEpic = null, maxEpic = null;
+    for (const t of slice) {
+      const snap = byTime.get(t);
+      const r = snap['レア']?.min_price;
+      const e = snap['エピック']?.min_price;
+      if (r != null && (minRare === null || r < byTime.get(minRare)['レア'].min_price)) minRare = t;
+      if (r != null && (maxRare === null || r > byTime.get(maxRare)['レア'].min_price)) maxRare = t;
+      if (e != null && (minEpic === null || e < byTime.get(minEpic)['エピック'].min_price)) minEpic = t;
+      if (e != null && (maxEpic === null || e > byTime.get(maxEpic)['エピック'].min_price)) maxEpic = t;
+    }
+    [minRare, maxRare, minEpic, maxEpic].forEach(t => t && keep.add(t));
+  }
+  keep.add(order[order.length - 1]); // 「最新の価格」表示のため直近の時点は必ず残す
+
+  const result = [];
+  for (const t of order) {
+    if (!keep.has(t)) continue;
+    const snap = byTime.get(t);
+    if (snap['レア']) result.push(snap['レア']);
+    if (snap['エピック']) result.push(snap['エピック']);
+  }
+  return result;
+}
+
 function formatTime(iso) {
   const d = new Date(iso);
   const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
@@ -436,7 +478,7 @@ async function fetchData(hours) {
     if (page.length < pageSize) break;
     offset += pageSize;
   }
-  return pages.flat().reverse();
+  return downsample(pages.flat().reverse());
 }
 
 function buildCharts(data) {
