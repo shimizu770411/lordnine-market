@@ -416,18 +416,27 @@ function formatTime(iso) {
 
 async function fetchData(hours) {
   const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
-  // 5分間隔サンプリング(1時間あたり約12回)×レア/エピック2種を基準に、期間分の行数+バッファを明示的にlimit指定。
-  // limit未指定だとPostgRESTのデフォルト上限(1000件)にかかり、asc順のため直近側が切り捨てられ最新値が古くなる。
-  const limit = Math.ceil(hours * 12 * 2) + 100;
-  const url = `${SUPABASE_URL}/rest/v1/price_snapshots?fetched_at=gte.${since}&order=fetched_at.desc&limit=${limit}&select=fetched_at,rarity,min_price,top5_avg_price,min_price_rare_equiv,top5_avg_rare_equiv,total_count`;
-  const res = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`
-    }
-  });
-  const data = await res.json();
-  return data.reverse();
+  const url = `${SUPABASE_URL}/rest/v1/price_snapshots?fetched_at=gte.${since}&order=fetched_at.desc&select=fetched_at,rarity,min_price,top5_avg_price,min_price_rare_equiv,top5_avg_rare_equiv,total_count`;
+  // PostgRESTはlimitを指定してもサーバー設定(db.max_rows=1000)で1リクエストあたり1000行に強制的に打ち切られるため、
+  // Rangeヘッダーで1000件ずつページ送りし、返り件数がpageSize未満になった時点(=全件取得済み)で終了する。
+  const pageSize = 1000;
+  const pages = [];
+  let offset = 0;
+  while (true) {
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Range-Unit': 'items',
+        'Range': `${offset}-${offset + pageSize - 1}`
+      }
+    });
+    const page = await res.json();
+    pages.push(page);
+    if (page.length < pageSize) break;
+    offset += pageSize;
+  }
+  return pages.flat().reverse();
 }
 
 function buildCharts(data) {
